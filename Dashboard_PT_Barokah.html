@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PT Barokah — Fleet Operations Dashboard</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #0f1923; color: #e2e8f0; font-family: 'Segoe UI', sans-serif; min-height: 100vh; }
+
+  .header { background: linear-gradient(135deg, #0a1628, #1a2744); border-bottom: 1px solid #1e3a5f; padding: 14px 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
+  .header-left { display: flex; align-items: center; gap: 10px; }
+  .header-title { font-size: 15px; font-weight: 700; color: #63b3ed; letter-spacing: 1px; }
+  .header-sub { font-size: 10px; color: #718096; letter-spacing: 2px; text-transform: uppercase; }
+  .header-time { font-size: 12px; color: #48bb78; font-family: monospace; text-align: right; }
+  .header-time-label { font-size: 10px; color: #718096; }
+
+  .content { padding: 16px; }
+
+  .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-bottom: 20px; }
+  .kpi-card { background: rgba(255,255,255,0.04); border-radius: 8px; padding: 14px 16px; }
+  .kpi-icon { font-size: 18px; margin-bottom: 4px; }
+  .kpi-label { font-size: 10px; color: #a0aec0; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 2px; }
+  .kpi-value { font-size: 22px; font-weight: 700; font-family: 'Courier New', monospace; }
+  .kpi-sub { font-size: 10px; color: #718096; margin-top: 2px; }
+
+  .tabs { display: flex; gap: 2px; border-bottom: 1px solid #2d3748; margin-bottom: 16px; overflow-x: auto; }
+  .tab { background: transparent; color: #718096; border: none; border-bottom: 2px solid transparent; padding: 8px 14px; cursor: pointer; font-size: 12px; white-space: nowrap; transition: all 0.2s; }
+  .tab.active { background: #1e3a5f; color: #63b3ed; border-bottom-color: #63b3ed; font-weight: 600; }
+
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  .filter-bar { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
+  .filter-btn { background: #1a2744; color: #718096; border: 1px solid #2d3748; border-radius: 20px; padding: 4px 12px; font-size: 11px; cursor: pointer; transition: all 0.2s; }
+  .filter-btn.active { background: #2b6cb0; color: #fff; }
+
+  .voyage-card { background: #131f2e; border: 1px solid #2d3748; border-radius: 8px; padding: 12px 16px; margin-bottom: 8px; transition: all 0.2s; }
+  .voyage-card:hover { border-color: #4a6fa5; }
+  .voyage-top { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+  .voyage-id { font-family: monospace; font-size: 12px; color: #63b3ed; }
+  .badge { font-size: 10px; padding: 2px 8px; border-radius: 10px; display: inline-block; margin-left: 6px; }
+  .voyage-meta { color: #a0aec0; font-size: 11px; margin-top: 3px; }
+  .bars { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 10px; }
+  .bar-label { font-size: 10px; color: #718096; margin-bottom: 4px; }
+  .bar-track { background: #2d3748; border-radius: 3px; height: 7px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 3px; transition: width 0.5s; }
+
+  .kpi-month { background: #131f2e; border: 1px solid #2d3748; border-radius: 8px; padding: 14px 16px; margin-bottom: 8px; }
+  .kpi-month-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 6px; }
+  .kpi-month-name { font-weight: 600; font-size: 14px; }
+  .kpi-badges { display: flex; gap: 8px; flex-wrap: wrap; }
+  .kpi-badge { font-size: 11px; }
+  .kpi-bars { display: flex; flex-direction: column; gap: 7px; }
+  .kpi-row { display: flex; align-items: center; gap: 8px; }
+  .kpi-row-label { width: 120px; font-size: 10px; color: #718096; flex-shrink: 0; }
+  .kpi-row-track { flex: 1; background: #2d3748; border-radius: 3px; height: 8px; }
+  .kpi-row-fill { height: 100%; border-radius: 3px; }
+  .kpi-row-val { width: 32px; font-size: 11px; font-family: monospace; text-align: right; flex-shrink: 0; }
+
+  .sop-card { background: #131f2e; border: 1px solid #2d3748; border-radius: 8px; padding: 12px 16px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
+  .sop-code { font-family: monospace; font-size: 11px; color: #718096; }
+  .sop-title { font-size: 13px; font-weight: 600; margin-top: 2px; }
+  .sop-meta { font-size: 11px; color: #718096; margin-top: 2px; }
+  .sop-status { font-size: 11px; padding: 3px 10px; border-radius: 10px; white-space: nowrap; }
+
+  .klaim-box { background: #1a1a2e; border: 1px solid #fc818133; border-radius: 8px; padding: 14px 16px; margin-bottom: 14px; }
+  .klaim-title { color: #fc8181; font-weight: 600; margin-bottom: 6px; }
+  .klaim-meta { font-size: 12px; color: #a0aec0; margin-bottom: 12px; }
+  .klaim-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; }
+  .klaim-stat { background: #0f1923; border-radius: 6px; padding: 8px 10px; }
+  .klaim-stat-label { font-size: 10px; color: #718096; margin-bottom: 2px; }
+  .klaim-stat-val { font-size: 13px; font-weight: 600; }
+  .checklist { margin-top: 12px; }
+  .check-item { display: flex; align-items: center; gap: 10px; padding: 9px 14px; background: #131f2e; border: 1px solid #2d3748; border-radius: 6px; margin-bottom: 6px; font-size: 13px; }
+  .check-item.done { color: #718096; text-decoration: line-through; }
+
+  .info-box { margin-top: 14px; padding: 12px 14px; background: #1a2744; border: 1px dashed #2b6cb0; border-radius: 8px; font-size: 12px; color: #63b3ed; }
+
+  @media (max-width: 480px) {
+    .bars { grid-template-columns: 1fr; }
+    .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <span style="font-size:22px">⚓</span>
+    <div>
+      <div class="header-title">PT BAROKAH GEMILANG PERKASA</div>
+      <div class="header-sub">Fleet Operations Dashboard</div>
+    </div>
+  </div>
+  <div>
+    <div class="header-time-label">Last Updated</div>
+    <div class="header-time" id="clock">—</div>
+  </div>
+</div>
+
+<div class="content">
+
+  <!-- KPI Cards -->
+  <div class="kpi-grid">
+    <div class="kpi-card" style="border-left:3px solid #63b3ed">
+      <div class="kpi-icon">🚢</div>
+      <div class="kpi-label">Total Voyage</div>
+      <div class="kpi-value" style="color:#63b3ed">6</div>
+      <div class="kpi-sub">Jan–Feb 2026</div>
+    </div>
+    <div class="kpi-card" style="border-left:3px solid #f6ad55">
+      <div class="kpi-icon">⚡</div>
+      <div class="kpi-label">Avg Speed</div>
+      <div class="kpi-value" style="color:#f6ad55">7.4 kn</div>
+      <div class="kpi-sub">Kontrak 8.5–9 kn</div>
+    </div>
+    <div class="kpi-card" style="border-left:3px solid #fc8181">
+      <div class="kpi-icon">⚠️</div>
+      <div class="kpi-label">Voyage Berisiko</div>
+      <div class="kpi-value" style="color:#fc8181">3</div>
+      <div class="kpi-sub">Perlu tindak lanjut</div>
+    </div>
+    <div class="kpi-card" style="border-left:3px solid #fc8181">
+      <div class="kpi-icon">📋</div>
+      <div class="kpi-label">Open Klaim</div>
+      <div class="kpi-value" style="color:#fc8181">3</div>
+      <div class="kpi-sub">Dari Pertamina aktif</div>
+    </div>
+    <div class="kpi-card" style="border-left:3px solid #48bb78">
+      <div class="kpi-icon">📄</div>
+      <div class="kpi-label">SOP Aktif</div>
+      <div class="kpi-value" style="color:#48bb78">3</div>
+      <div class="kpi-sub">dari 6 total SOP</div>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab active" onclick="showTab('voyage',this)">📍 Monitoring Voyage</button>
+    <button class="tab" onclick="showTab('kpi',this)">📊 KPI Bulanan</button>
+    <button class="tab" onclick="showTab('sop',this)">📄 SOP Tracker</button>
+    <button class="tab" onclick="showTab('klaim',this)">🔴 Klaim Register</button>
+  </div>
+
+  <!-- VOYAGE PANEL -->
+  <div id="panel-voyage" class="panel active">
+    <div class="filter-bar">
+      <button class="filter-btn active" onclick="filterVoyage('Semua',this)">Semua</button>
+      <button class="filter-btn" onclick="filterVoyage('Sultan Samudera',this)">SPOB Sultan Samudera</button>
+      <button class="filter-btn" onclick="filterVoyage('Mutiara Laut',this)">SPOB Mutiara Laut</button>
+      <button class="filter-btn" onclick="filterVoyage('Nusantara Jaya',this)">SPOB Nusantara Jaya</button>
+    </div>
+    <div id="voyage-list"></div>
+  </div>
+
+  <!-- KPI PANEL -->
+  <div id="panel-kpi" class="panel">
+    <p style="color:#718096;font-size:13px;margin-bottom:14px">Performa 6 bulan terakhir (%) — Speed Compliance, Bunker Efficiency, On-Time Delivery</p>
+    <div id="kpi-list"></div>
+  </div>
+
+  <!-- SOP PANEL -->
+  <div id="panel-sop" class="panel">
+    <div id="sop-list"></div>
+    <div class="info-box">💡 <strong>Rekomendasi:</strong> 2 SOP perlu segera di-review (OPS-02 & COM-01). SOP COM-02 harus selesai draft sebelum deadline respons klaim Pertamina.</div>
+  </div>
+
+  <!-- KLAIM PANEL -->
+  <div id="panel-klaim" class="panel">
+    <div class="klaim-box">
+      <div class="klaim-title">🔴 Klaim Aktif — No. 579/PIS2330-PN/2026-S6</div>
+      <div class="klaim-meta">Dari: PT Pertamina Patra Niaga &nbsp;|&nbsp; Tanggal: 16 Maret 2026 &nbsp;|&nbsp; Deadline: 26 Maret 2026</div>
+      <div class="klaim-stats">
+        <div class="klaim-stat"><div class="klaim-stat-label">Jenis</div><div class="klaim-stat-val" style="color:#e2e8f0">Slow Speed + Over Bunker</div></div>
+        <div class="klaim-stat"><div class="klaim-stat-label">Kapal</div><div class="klaim-stat-val" style="color:#e2e8f0">SPOB Sultan Samudera</div></div>
+        <div class="klaim-stat"><div class="klaim-stat-label">Total Voyage Diklaim</div><div class="klaim-stat-val" style="color:#fc8181">36 voyage</div></div>
+      </div>
+    </div>
+    <div style="font-size:13px;color:#a0aec0;margin-bottom:10px">Checklist Persiapan Bantahan:</div>
+    <div class="checklist" id="checklist"></div>
+  </div>
+
+</div>
+
+<script>
+const voyages = [
+  { id:"V-001", kapal:"Sultan Samudera", voyage:"Z383-26001", tgl:"05 Jan 2026", rute:"Balikpapan → Bontang", sc:8.5, sa:6.2, bs:4200, ba:5100, cuaca:"Buruk", status:"Risiko", klaim:true },
+  { id:"V-002", kapal:"Sultan Samudera", voyage:"Z383-26002", tgl:"16 Jan 2026", rute:"Bontang → Samarinda", sc:8.5, sa:8.1, bs:3800, ba:3950, cuaca:"Baik", status:"Normal", klaim:false },
+  { id:"V-003", kapal:"Mutiara Laut", voyage:"Z384-26003", tgl:"20 Jan 2026", rute:"Samarinda → Balikpapan", sc:9.0, sa:9.2, bs:3500, ba:3420, cuaca:"Baik", status:"Optimal", klaim:false },
+  { id:"V-004", kapal:"Sultan Samudera", voyage:"Z383-26004", tgl:"25 Jan 2026", rute:"Balikpapan → Tarakan", sc:8.5, sa:7.1, bs:5000, ba:6200, cuaca:"Sedang", status:"Risiko", klaim:true },
+  { id:"V-005", kapal:"Nusantara Jaya", voyage:"Z385-26005", tgl:"01 Feb 2026", rute:"Tarakan → Nunukan", sc:8.0, sa:8.0, bs:4100, ba:4050, cuaca:"Baik", status:"Normal", klaim:false },
+  { id:"V-006", kapal:"Sultan Samudera", voyage:"Z383-26006", tgl:"10 Feb 2026", rute:"Bontang → Balikpapan", sc:8.5, sa:5.8, bs:4200, ba:5800, cuaca:"Buruk", status:"Kritis", klaim:true },
+];
+
+const statusColor = { Optimal:"#48bb78", Normal:"#63b3ed", Risiko:"#f6ad55", Kritis:"#fc8181" };
+const cuacaColor  = { Baik:"#48bb78", Sedang:"#f6ad55", Buruk:"#fc8181" };
+
+let activeFilter = "Semua";
+
+function renderVoyages() {
+  const list = document.getElementById("voyage-list");
+  const data = activeFilter === "Semua" ? voyages : voyages.filter(v => v.kapal.includes(activeFilter));
+  list.innerHTML = data.map(v => {
+    const sc = statusColor[v.status];
+    const speedPct = Math.round((v.sa/v.sc)*100);
+    const bunkerOk = v.ba <= v.bs;
+    const bunkerPct = Math.round((v.bs/v.ba)*100);
+    return `
+    <div class="voyage-card" style="border-left:3px solid ${sc}${v.klaim?';border-color:#fc818144':''}"  >
+      <div class="voyage-top">
+        <div>
+          <span class="voyage-id">${v.voyage}</span>
+          <span class="badge" style="background:${sc}22;color:${sc}">${v.status}</span>
+          ${v.klaim ? '<span class="badge" style="background:#fc818122;color:#fc8181">⚠ Ada Klaim</span>' : ''}
+          <div class="voyage-meta">🚢 SPOB ${v.kapal} &nbsp;|&nbsp; 📍 ${v.rute} &nbsp;|&nbsp; 📅 ${v.tgl}</div>
+        </div>
+        <span style="font-size:12px;color:${cuacaColor[v.cuaca]}">🌊 ${v.cuaca}</span>
+      </div>
+      <div class="bars">
+        <div>
+          <div class="bar-label">KECEPATAN — Aktual: <span style="color:${v.sa<v.sc?'#fc8181':'#48bb78'}">${v.sa} kn</span> / Kontrak: ${v.sc} kn</div>
+          <div class="bar-track"><div class="bar-fill" style="width:${Math.min(speedPct,100)}%;background:${v.sa<v.sc?'#fc8181':'#48bb78'}"></div></div>
+        </div>
+        <div>
+          <div class="bar-label">BUNKER — Aktual: <span style="color:${bunkerOk?'#48bb78':'#fc8181'}">${v.ba.toLocaleString()} L</span> / Standar: ${v.bs.toLocaleString()} L</div>
+          <div class="bar-track"><div class="bar-fill" style="width:${Math.min(Math.round((v.ba/(v.bs*1.5))*100),100)}%;background:${bunkerOk?'#48bb78':'#fc8181'}"></div></div>
+        </div>
+      </div>
+    </div>`;
+  }).join("");
+}
+
+function filterVoyage(val, btn) {
+  activeFilter = val;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderVoyages();
+}
+
+// KPI
+const kpiData = [
+  { bulan:"Sep 2025", speed:82, bunker:78, ontime:90 },
+  { bulan:"Okt 2025", speed:88, bunker:85, ontime:92 },
+  { bulan:"Nov 2025", speed:75, bunker:70, ontime:85 },
+  { bulan:"Des 2025", speed:71, bunker:65, ontime:80 },
+  { bulan:"Jan 2026", speed:79, bunker:74, ontime:88 },
+  { bulan:"Feb 2026", speed:85, bunker:82, ontime:94 },
+];
+
+function kpiColor(v, threshold=85) { return v >= threshold ? "#48bb78" : v >= 75 ? "#f6ad55" : "#fc8181"; }
+
+document.getElementById("kpi-list").innerHTML = kpiData.map(d => `
+  <div class="kpi-month">
+    <div class="kpi-month-header">
+      <span class="kpi-month-name">${d.bulan}</span>
+      <div class="kpi-badges">
+        <span class="kpi-badge" style="color:${kpiColor(d.speed)}">Speed ${d.speed}%</span>
+        <span class="kpi-badge" style="color:${kpiColor(d.bunker)}">Bunker ${d.bunker}%</span>
+        <span class="kpi-badge" style="color:${kpiColor(d.ontime,90)}">OnTime ${d.ontime}%</span>
+      </div>
+    </div>
+    <div class="kpi-bars">
+      ${[["Speed Compliance","#63b3ed",d.speed],["Bunker Efficiency","#48bb78",d.bunker],["On-Time Delivery","#f6ad55",d.ontime]].map(([lbl,col,val])=>`
+      <div class="kpi-row">
+        <div class="kpi-row-label">${lbl}</div>
+        <div class="kpi-row-track"><div class="kpi-row-fill" style="width:${val}%;background:${col}"></div></div>
+        <div class="kpi-row-val" style="color:${col}">${val}%</div>
+      </div>`).join("")}
+    </div>
+  </div>`).join("");
+
+// SOP
+const sopData = [
+  { kode:"SOP-OPS-01", judul:"Pre-Departure Checklist", kategori:"Operasional", status:"Aktif", review:"Jan 2026" },
+  { kode:"SOP-OPS-02", judul:"Pencatatan Logbook Harian", kategori:"Operasional", status:"Perlu Review", review:"Mar 2025" },
+  { kode:"SOP-HSE-01", judul:"Emergency Response Kapal", kategori:"HSE", status:"Aktif", review:"Feb 2026" },
+  { kode:"SOP-HSE-02", judul:"Penanganan Tumpahan Minyak", kategori:"HSE", status:"Aktif", review:"Des 2025" },
+  { kode:"SOP-COM-01", judul:"Pelaporan Insiden ke Klien", kategori:"Komersial", status:"Perlu Review", review:"Jun 2025" },
+  { kode:"SOP-COM-02", judul:"Dokumentasi Klaim & Sanggahan", kategori:"Komersial", status:"Draft", review:"—" },
+];
+const sopColor = { Aktif:["#48bb78","#48bb7822"], "Perlu Review":["#f6ad55","#f6ad5522"], Draft:["#a0aec0","#71809622"] };
+document.getElementById("sop-list").innerHTML = sopData.map(s => {
+  const [col, bg] = sopColor[s.status];
+  return `<div class="sop-card" style="border-left:3px solid ${col}">
+    <div>
+      <div class="sop-code">${s.kode}</div>
+      <div class="sop-title">${s.judul}</div>
+      <div class="sop-meta">Kategori: ${s.kategori} &nbsp;|&nbsp; Last Review: ${s.review}</div>
+    </div>
+    <span class="sop-status" style="background:${bg};color:${col}">${s.status}</span>
+  </div>`;
+}).join("");
+
+// Checklist
+const checks = [
+  { task:"Kumpulkan Deck Log & Engine Log semua voyage", done:true },
+  { task:"Download data AIS dari MarineTraffic", done:true },
+  { task:"Request data cuaca BMKG per tanggal voyage", done:false },
+  { task:"Review pasal speed & bunker dalam kontrak", done:false },
+  { task:"Hitung ulang nilai klaim Pertamina secara independen", done:false },
+  { task:"Susun surat bantahan resmi", done:false },
+  { task:"Review & tanda tangan surat bantahan oleh Direktur", done:false },
+];
+document.getElementById("checklist").innerHTML = checks.map(c =>
+  `<div class="check-item${c.done?' done':''}"><span>${c.done?'✅':'⬜'}</span><span>${c.task}</span></div>`
+).join("");
+
+// Tabs
+function showTab(id, btn) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('panel-'+id).classList.add('active');
+  btn.classList.add('active');
+}
+
+// Clock
+function updateClock() {
+  const now = new Date();
+  const opts = { timeZone:'Asia/Jakarta', year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' };
+  document.getElementById('clock').textContent = now.toLocaleString('id-ID', opts) + ' WIB';
+}
+updateClock();
+setInterval(updateClock, 30000);
+
+renderVoyages();
+</script>
+</body>
+</html>
